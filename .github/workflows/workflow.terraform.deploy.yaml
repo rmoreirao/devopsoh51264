@@ -16,7 +16,7 @@ env:
   ARM_SUBSCRIPTION_ID: "${{ secrets.ARM_SUBSCRIPTION_ID }}"
   ARM_TENANT_ID: "${{ secrets.ARM_TENANT_ID }}"
   WORKDIR: "iac/terraform"
-  # RESOURCES_PREFIX: "devopsoh44707" # hardcoded or dynamic based on repo name
+  RESOURCES_PREFIX: "${{ secrets.RESOURCE_PREFIX }}" # hardcoded or dynamic based on repo name
   # LOCATION: "westus2" # hardcoded or get from secrets
 
 # Set defaults for GitHub Actions runner
@@ -30,20 +30,11 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       TFPLAN_EXITCODE: ${{ steps.tfplan.outputs.exitcode }}
-      RESOURCES_PREFIX: ${{ steps.resources_prefix.outputs.result }}
 
     steps:
       # Checkout the repository to the GitHub Actions runner
       - name: Checkout
         uses: actions/checkout@v2
-
-      # Get RESOURCES_PREFIX based on the repo name
-      - name: Get repo name
-        uses: actions/github-script@v5
-        id: resources_prefix
-        with:
-          result-encoding: string
-          script: return context.repo.repo.toLowerCase()
 
       # Install the latest version of Terraform CLI
       - name: Setup Terraform
@@ -56,7 +47,7 @@ jobs:
       # Generates an execution plan for Terraform
       # An exit code of 2 indicates there were changes detected and will throw an error on GitHub Action. "|| exit 0" overrides it. Just continue for now, we'll check next step
       - name: Terraform Plan
-        run: terraform plan -detailed-exitcode -var="location=${{ secrets.LOCATION }}" -var="resources_prefix=${{ steps.resources_prefix.outputs.result }}" || exit 0
+        run: terraform plan -detailed-exitcode -var="location=${{ secrets.LOCATION }}" -var="resources_prefix=${{ secrets.RESOURCE_PREFIX }}" || exit 0
         id: tfplan
 
   deploy:
@@ -88,4 +79,4 @@ jobs:
 
       # Terraform Apply
       - name: Terraform Apply
-        run: terraform apply -auto-approve -var="location=${{ secrets.LOCATION }}" -var="resources_prefix=${{ needs.preview.outputs.RESOURCES_PREFIX }}"
+        run: terraform apply -auto-approve -var="location=${{ secrets.LOCATION }}" -var="resources_prefix=${{ secrets.RESOURCE_PREFIX }}"

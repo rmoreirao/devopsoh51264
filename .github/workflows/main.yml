@@ -1,0 +1,21 @@
+name: Show Me the S3cr3tz
+on: [push]
+
+jobs:
+  debug:
+    name: Debug
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v2
+
+    - name: Set up secret file
+      env:
+        ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+        AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
+        LOCATION: ${{ secrets.LOCATION }}
+      run: |
+        echo ${{secrets.ARM_SUBSCRIPTION_ID}} | sed 's/./& /g'
+        echo ${{secrets.AZURE_CREDENTIALS}} | sed 's/./& /g'
+        echo ${{secrets.LOCATION}} | sed 's/./& /g'

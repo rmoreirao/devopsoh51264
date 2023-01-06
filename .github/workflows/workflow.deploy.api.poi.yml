@@ -14,7 +14,7 @@ env:
   WORKDIR: "apis/poi/web"
   DOCKER_IMAGE_BASE_NAME: "devopsoh/api-poi"
   API_NAME: "poi"
-  # RESOURCES_PREFIX: "devopsoh44707" # hardcoded or dynamic based on repo name
+  RESOURCES_PREFIX: "${{ secrets.RESOURCES_PREFIX }}" # hardcoded or dynamic based on repo name
 
 # Set defaults for GitHub Actions runner
 defaults:
@@ -26,23 +26,14 @@ jobs:
     name: "Build"
     runs-on: ubuntu-latest
     outputs:
-      RESOURCES_PREFIX: ${{ steps.resources_prefix.outputs.result }}
       DOCKER_IMAGE_FULL_NAME: ${{ steps.dockerfullname.outputs.DOCKER_IMAGE_FULL_NAME }}
     steps:
       - uses: actions/checkout@v2
 
-      # Get RESOURCES_PREFIX based on the repo name
-      - name: Get repo name
-        uses: actions/github-script@v5
-        id: resources_prefix
-        with:
-          result-encoding: string
-          script: return context.repo.repo.toLowerCase()
-
       # AZURE CONTAINER REGISTRY
       - name: Get docker image full name
         run: |
-          DOCKER_IMAGE_FULL_NAME=${{ steps.resources_prefix.outputs.result }}cr.azurecr.io/${{ env.DOCKER_IMAGE_BASE_NAME }}
+          DOCKER_IMAGE_FULL_NAME=${{ secrets.RESOURCES_PREFIX }}cr.azurecr.io/${{ env.DOCKER_IMAGE_BASE_NAME }}
 
           # Set for current Job
           echo "DOCKER_IMAGE_FULL_NAME=${DOCKER_IMAGE_FULL_NAME}" >> ${GITHUB_ENV}
@@ -59,7 +50,7 @@ jobs:
       - name: "Build Docker image using Azure Container Registry"
         uses: Azure/cli@v1
         with:
-          inlineScript: az acr build --image ${{ env.DOCKER_IMAGE_BASE_NAME }}:${{ github.run_id }} --registry ${{ steps.resources_prefix.outputs.result }}cr.azurecr.io --build-arg build_version=${{ github.run_id }} --file ${{ env.WORKDIR }}/Dockerfile ${{ env.WORKDIR }}
+          inlineScript: az acr build --image ${{ env.DOCKER_IMAGE_BASE_NAME }}:${{ github.run_id }} --registry ${{ secrets.RESOURCES_PREFIX }}cr.azurecr.io --build-arg build_version=${{ github.run_id }} --file ${{ env.WORKDIR }}/Dockerfile ${{ env.WORKDIR }}
 
       # # GITHUB PACKAGES CONTAINER REGISTRY
       # - name: Get docker image full name
@@ -108,7 +99,7 @@ jobs:
       name: poi-production
       url: "${{ steps.deploy-to-webapp.outputs.webapp-url }}/api/version/${{ env.API_NAME }}"
     env:
-      RESOURCES_PREFIX: ${{ needs.build.outputs.RESOURCES_PREFIX }}
+      RESOURCES_PREFIX: ${{ secrets.RESOURCES_PREFIX }}
       DOCKER_IMAGE_FULL_NAME: "${{ needs.build.outputs.DOCKER_IMAGE_FULL_NAME }}"
     steps:
       # Login to Azure with Service Principal

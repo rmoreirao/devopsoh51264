@@ -51,49 +51,42 @@ jobs:
         uses: Azure/cli@v1
         with:
           inlineScript: az acr build --image ${{ env.DOCKER_IMAGE_BASE_NAME }}:${{ github.run_id }} --registry ${{ secrets.RESOURCES_PREFIX }}cr.azurecr.io --resource-group ${{ secrets.RESOURCES_PREFIX }}rg --build-arg build_version=${{ github.run_id }} --file ${{ env.WORKDIR }}/Dockerfile ${{ env.WORKDIR }}
+  
+  staging:
+    name: "Staging (Blue)"
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: poi-staging
+      url: "${{ steps.deploy-to-webapp.outputs.webapp-url }}/api/version/${{ env.API_NAME }}"
+    env:
+      RESOURCES_PREFIX: ${{ needs.build.outputs.RESOURCES_PREFIX }}
+      DOCKER_IMAGE_FULL_NAME: "${{ needs.build.outputs.DOCKER_IMAGE_FULL_NAME }}"
+    steps:
+      # Login to Azure with Service Principal
+      - name: "Azure Login"
+        uses: Azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # # GITHUB PACKAGES CONTAINER REGISTRY
-      # - name: Get docker image full name
-      #   run: |
-      #     # Repository name to lowercase - Docker registries accept only lowercase tag names
-      #     REPOSITORY=${GITHUB_REPOSITORY,,}
-      #     DOCKER_IMAGE_FULL_NAME=ghcr.io/${REPOSITORY}/${{ env.DOCKER_IMAGE_BASE_NAME }}
+      - name: "Deploy to Production"
+        uses: Azure/cli@v1
+        id: deploy-to-webapp
+        with:
+          inlineScript: az webapp config container set --name ${{ env.RESOURCES_PREFIX }}${{ env.API_NAME }} --slot staging --resource-group ${{ secrets.RESOURCES_PREFIX }}rg --docker-custom-image-name '${{ env.DOCKER_IMAGE_FULL_NAME }}:${{ github.run_id }}' --docker-registry-server-url 'https://${{ secrets.RESOURCES_PREFIX }}cr.azurecr.io'
 
-      #     # Set for current Job
-      #     echo "DOCKER_IMAGE_FULL_NAME=${DOCKER_IMAGE_FULL_NAME}" >> ${GITHUB_ENV}
-
-      #     # Set for next Job
-      #     echo "::set-output name=DOCKER_IMAGE_FULL_NAME::${DOCKER_IMAGE_FULL_NAME}"
-      #   id: dockerfullname
-
-      # - name: Log in to ghcr.io
-      #   uses: docker/login-action@v1
-      #   with:
-      #     registry: ghcr.io
-      #     username: ${{ github.actor }}
-      #     password: ${{ secrets.GITHUB_TOKEN }}
-
-      # - name: Docker Metadata action
-      #   uses: docker/metadata-action@v3
-      #   with:
-      #     images: ${{ env.DOCKER_IMAGE_FULL_NAME }}
-      #     tags: |
-      #       type=raw,value=${{ github.run_id }}
-      #   id: metadata
-
-      # - name: Build and push Docker image
-      #   uses: docker/build-push-action@v2
-      #   with:
-      #     context: ${{ env.WORKDIR }}
-      #     file: ${{ env.WORKDIR }}/Dockerfile
-      #     tags: ${{ steps.metadata.outputs.tags }}
-      #     labels: ${{ steps.metadata.outputs.labels }}
-      #     build-args: build_version=${{ github.run_id }}
-      #     push: true
+      - name: Check the deployed service health check
+        uses: jtalk/url-health-check-action@v2
+        with:
+          url: https://${{ secrets.RESOURCES_PREFIX }}${{ env.API_NAME }}-staging.azurewebsites.net/api/healthcheck/${{ env.API_NAME }}
+          follow-redirect: true
+          max-attempts: 60
+          retry-delay: 10s
+          retry-all: true
 
   production:
-    name: "Production"
-    needs: build
+    name: "Production (Red)"
+    needs: staging
     runs-on: ubuntu-latest
     environment:
       name: poi-production
@@ -115,8 +108,17 @@ jobs:
       #   with:
       #     app-name: ${{ env.RESOURCES_PREFIX }}${{ env.API_NAME }}
       #     images: "${{ env.DOCKER_IMAGE_FULL_NAME }}:${{ github.run_id }}"
-      - name: "Build Docker image using Azure Container Registry"
+      - name: "Deploy to Production"
         uses: Azure/cli@v1
         id: deploy-to-webapp
         with:
           inlineScript: az webapp config container set --name ${{ env.RESOURCES_PREFIX }}${{ env.API_NAME }} --resource-group ${{ secrets.RESOURCES_PREFIX }}rg --docker-custom-image-name '${{ env.DOCKER_IMAGE_FULL_NAME }}:${{ github.run_id }}' --docker-registry-server-url 'https://${{ secrets.RESOURCES_PREFIX }}cr.azurecr.io'
+
+      - name: Check the deployed service health check
+        uses: jtalk/url-health-check-action@v2
+        with:
+          url: https://${{ secrets.RESOURCES_PREFIX }}${{ env.API_NAME }}.azurewebsites.net/api/healthcheck/${{ env.API_NAME }}
+          follow-redirect: true
+          max-attempts: 60
+          retry-delay: 10s
+          retry-all: true

@@ -79,7 +79,7 @@ jobs:
         with:
           url: https://${{ secrets.RESOURCES_PREFIX }}${{ env.API_NAME }}-staging.azurewebsites.net/api/healthcheck/${{ env.API_NAME }}
           follow-redirect: true
-          max-attempts: 60
+          max-attempts: 6
           retry-delay: 10s
           retry-all: true
 
@@ -107,17 +107,17 @@ jobs:
       #   with:
       #     app-name: ${{ env.RESOURCES_PREFIX }}${{ env.API_NAME }}
       #     images: "${{ env.DOCKER_IMAGE_FULL_NAME }}:${{ github.run_id }}"
-      - name: "Deploy to Production"
+      - name: "Deploy to Production - Swap from Staging"
         uses: Azure/cli@v1
         id: deploy-to-webapp
         with:
-          inlineScript: az webapp config container set --name ${{ env.RESOURCES_PREFIX }}${{ env.API_NAME }} --resource-group ${{ secrets.RESOURCES_PREFIX }}rg --docker-custom-image-name '${{ env.DOCKER_IMAGE_FULL_NAME }}:${{ github.run_id }}' --docker-registry-server-url 'https://${{ secrets.RESOURCES_PREFIX }}cr.azurecr.io'
+          inlineScript: az webapp deployment slot swap  -g ${{ secrets.RESOURCES_PREFIX }}rg -n ${{ env.RESOURCES_PREFIX }}${{ env.API_NAME }} --slot staging --target-slot production
 
       - name: Check the deployed service health check
         uses: jtalk/url-health-check-action@v2
         with:
           url: https://${{ secrets.RESOURCES_PREFIX }}${{ env.API_NAME }}.azurewebsites.net/api/healthcheck/${{ env.API_NAME }}
           follow-redirect: true
-          max-attempts: 60
+          max-attempts: 6
           retry-delay: 10s
           retry-all: true

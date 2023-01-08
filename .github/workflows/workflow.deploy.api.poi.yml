@@ -25,22 +25,22 @@ jobs:
   build:
     name: "Build"
     runs-on: ubuntu-latest
-    outputs:
-      DOCKER_IMAGE_FULL_NAME: ${{ steps.dockerfullname.outputs.DOCKER_IMAGE_FULL_NAME }}
+    # outputs:
+    #   DOCKER_IMAGE_FULL_NAME: ${{ steps.dockerfullname.outputs.DOCKER_IMAGE_FULL_NAME }}
     steps:
       - uses: actions/checkout@v2
 
       # AZURE CONTAINER REGISTRY
-      - name: Get docker image full name
-        run: |
-          DOCKER_IMAGE_FULL_NAME=${{ secrets.RESOURCES_PREFIX }}cr.azurecr.io/${{ env.DOCKER_IMAGE_BASE_NAME }}
+      # - name: Get docker image full name
+      #   run: |
+      #     DOCKER_IMAGE_FULL_NAME=${{ secrets.RESOURCES_PREFIX }}cr.azurecr.io/${{ env.DOCKER_IMAGE_BASE_NAME }}
 
-          # Set for current Job
-          echo "DOCKER_IMAGE_FULL_NAME=${DOCKER_IMAGE_FULL_NAME}" >> ${GITHUB_ENV}
+      #     # Set for current Job
+      #     echo "DOCKER_IMAGE_FULL_NAME=${DOCKER_IMAGE_FULL_NAME}" >> ${GITHUB_ENV}
 
-          # Set for next Job
-          echo "::set-output name=DOCKER_IMAGE_FULL_NAME::${DOCKER_IMAGE_FULL_NAME}"
-        id: dockerfullname
+      #     # Set for next Job
+      #     echo "::set-output name=DOCKER_IMAGE_FULL_NAME::${DOCKER_IMAGE_FULL_NAME}"
+      #   id: dockerfullname
 
       - name: "Azure Login"
         uses: Azure/login@v1
@@ -50,7 +50,7 @@ jobs:
       - name: "Build Docker image using Azure Container Registry"
         uses: Azure/cli@v1
         with:
-          inlineScript: az acr build --image ${{ env.DOCKER_IMAGE_BASE_NAME }}:${{ github.run_id }} --registry ${{ secrets.RESOURCES_PREFIX }}cr.azurecr.io --resource-group ${{ secrets.RESOURCES_PREFIX }}rg --build-arg build_version=${{ github.run_id }} --file ${{ env.WORKDIR }}/Dockerfile ${{ env.WORKDIR }}
+          inlineScript: az acr build --image ${{ secrets.RESOURCES_PREFIX }}cr.azurecr.io/${{ env.DOCKER_IMAGE_BASE_NAME }}:${{ github.run_id }} --registry ${{ secrets.RESOURCES_PREFIX }}cr.azurecr.io --resource-group ${{ secrets.RESOURCES_PREFIX }}rg --build-arg build_version=${{ github.run_id }} --file ${{ env.WORKDIR }}/Dockerfile ${{ env.WORKDIR }}
   
   staging:
     name: "Staging (Blue)"
@@ -60,7 +60,7 @@ jobs:
       name: poi-staging
     env:
       RESOURCES_PREFIX: ${{ secrets.RESOURCES_PREFIX }}
-      DOCKER_IMAGE_FULL_NAME: "${{ needs.build.outputs.DOCKER_IMAGE_FULL_NAME }}"
+      # DOCKER_IMAGE_FULL_NAME: "${{ needs.build.outputs.DOCKER_IMAGE_FULL_NAME }}"
     steps:
       # Login to Azure with Service Principal
       - name: "Azure Login"
@@ -72,7 +72,7 @@ jobs:
         uses: Azure/cli@v1
         id: deploy-to-webapp
         with:
-          inlineScript: az webapp config container set --name ${{ env.RESOURCES_PREFIX }}${{ env.API_NAME }} --slot staging --resource-group ${{ secrets.RESOURCES_PREFIX }}rg --docker-custom-image-name '${{ env.DOCKER_IMAGE_FULL_NAME }}:${{ github.run_id }}' --docker-registry-server-url 'https://${{ secrets.RESOURCES_PREFIX }}cr.azurecr.io'
+          inlineScript: az webapp config container set --name ${{ env.RESOURCES_PREFIX }}${{ env.API_NAME }} --slot staging --resource-group ${{ secrets.RESOURCES_PREFIX }}rg --docker-custom-image-name '${{ secrets.RESOURCES_PREFIX }}cr.azurecr.io/${{ env.DOCKER_IMAGE_BASE_NAME }}:${{ github.run_id }}' --docker-registry-server-url 'https://${{ secrets.RESOURCES_PREFIX }}cr.azurecr.io'
 
       - name: Check the deployed service health check
         uses: jtalk/url-health-check-action@v2
@@ -92,7 +92,7 @@ jobs:
       url: "${{ steps.deploy-to-webapp.outputs.webapp-url }}/api/version/${{ env.API_NAME }}"
     env:
       RESOURCES_PREFIX: ${{ secrets.RESOURCES_PREFIX }}
-      DOCKER_IMAGE_FULL_NAME: "${{ needs.build.outputs.DOCKER_IMAGE_FULL_NAME }}"
+      # DOCKER_IMAGE_FULL_NAME: "${{ needs.build.outputs.DOCKER_IMAGE_FULL_NAME }}"
     steps:
       # Login to Azure with Service Principal
       - name: "Azure Login"

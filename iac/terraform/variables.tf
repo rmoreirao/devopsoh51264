@@ -47,6 +47,13 @@ variable "mssql_server_administrator_login_password" {
   sensitive   = true
 }
 
+variable "bing_maps_key" {
+  description = ""
+  type        = string
+  default     = null
+  sensitive   = true
+}
+
 variable "apipoi_base_image_tag" {
   description = ""
   type        = string

@@ -31,6 +31,7 @@ jobs:
       run: sudo apt-get install  apache2-utils
       
     - name: Load Test 
+      working-directory: ""
       run: | 
         rps=$(ab -t 20 -c 10 https://${{ secrets.RESOURCES_PREFIX }}${{ env.API_NAME }}-staging.azurewebsites.net/api/version/poi | grep -Poe 'Requests per second: \K.*' | sed 's/^ *//g')
         echo "Requests per second: $rps"   

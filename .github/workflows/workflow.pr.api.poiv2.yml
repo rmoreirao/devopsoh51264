@@ -31,8 +31,8 @@ jobs:
         id: gitleaks
         uses: DariuszPorowski/github-action-gitleaks@v2
         with:
-          source: iac/terraform
-          # config: gitleaksconfig.toml
+          source: "iac/terraform/"
+          config: "gitleaks/UDMSecretChecksv8.toml"
           report_format: "sarif"
           fail: false
 

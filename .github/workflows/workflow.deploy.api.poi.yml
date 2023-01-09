@@ -128,7 +128,7 @@ jobs:
 
   production:
     name: "Production (Red)"
-    needs: staging
+    needs: route_traffic_fifty_percent_validate
     runs-on: ubuntu-20.04
     environment:
       name: poi-production

@@ -22,24 +22,9 @@ defaults:
     working-directory: "apis/poi/web"
 
 jobs:
-  load_test_staging_test:
-    name: "Load Testing Staging (Blue)"
-    runs-on: ubuntu-latest
-    steps:
-    - name: Install Apache Bench
-      working-directory: ""
-      run: sudo apt-get install  apache2-utils
-      
-    - name: Load Test 
-      working-directory: ""
-      run: | 
-        rps=$(ab -t 20 -c 10 https://${{ secrets.RESOURCES_PREFIX }}${{ env.API_NAME }}-staging.azurewebsites.net/api/version/poi | grep -Poe 'Requests per second: \K.*' | sed 's/^ *//g')
-        echo "Requests per second: $rps"   
-
   build:
     name: "Build"
     runs-on: ubuntu-latest
-    needs: load_test_staging_test
     # outputs:
     #   DOCKER_IMAGE_FULL_NAME: ${{ steps.dockerfullname.outputs.DOCKER_IMAGE_FULL_NAME }}
     steps:
@@ -108,11 +93,12 @@ jobs:
     - name: Install Apache Bench
       working-directory: ""
       run: sudo apt-get install  apache2-utils
-
+      
     - name: Load Test 
+      working-directory: ""
       run: | 
         rps=$(ab -t 20 -c 10 https://${{ secrets.RESOURCES_PREFIX }}${{ env.API_NAME }}-staging.azurewebsites.net/api/version/poi | grep -Poe 'Requests per second: \K.*' | sed 's/^ *//g')
-        echo "Requests per second: $rps"   
+        echo "Requests per second: $rps" 
 
   production:
     name: "Production (Red)"

@@ -72,7 +72,6 @@ jobs:
 
       - name: "Deploy to Staging"
         uses: Azure/cli@v1
-        id: deploy-to-webapp
         with:
           inlineScript: az webapp config container set --name ${{ env.RESOURCES_PREFIX }}${{ env.API_NAME }} --slot staging --resource-group ${{ secrets.RESOURCES_PREFIX }}rg --docker-custom-image-name '${{ secrets.RESOURCES_PREFIX }}cr.azurecr.io/${{ env.DOCKER_IMAGE_BASE_NAME }}:${{ github.run_id }}' --docker-registry-server-url 'https://${{ secrets.RESOURCES_PREFIX }}cr.azurecr.io'
 
@@ -156,7 +155,6 @@ jobs:
       #     images: "${{ env.DOCKER_IMAGE_FULL_NAME }}:${{ github.run_id }}"
       - name: "Deploy to Production - Swap from Staging"
         uses: Azure/cli@v1
-        id: deploy-to-webapp
         with:
           inlineScript: az webapp deployment slot swap  -g ${{ secrets.RESOURCES_PREFIX }}rg -n ${{ env.RESOURCES_PREFIX }}${{ env.API_NAME }} --slot staging --target-slot production
 
@@ -172,7 +170,6 @@ jobs:
       - name: "If Failure Rollback Production"
         if: failure()
         uses: Azure/cli@v1
-        id: deploy-to-webapp
         with:
           inlineScript: az webapp deployment slot swap  -g ${{ secrets.RESOURCES_PREFIX }}rg -n ${{ env.RESOURCES_PREFIX }}${{ env.API_NAME }} --slot staging --target-slot production
         

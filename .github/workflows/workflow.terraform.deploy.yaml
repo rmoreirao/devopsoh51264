@@ -30,11 +30,27 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       TFPLAN_EXITCODE: ${{ steps.tfplan.outputs.exitcode }}
+      SECRET_BINGS-MAP-KEY: ${{ steps.getSecrets.outputs.BINGS-MAP-KEY }}
+      SECRET_MSSQL-SERVER-ADM-PASSWORD: ${{ steps.getSecrets.outputs.MSSQL-SERVER-ADM-PASSWORD }}
 
     steps:
       # Checkout the repository to the GitHub Actions runner
       - name: Checkout
         uses: actions/checkout@v2
+
+      - name: Azure Login
+        uses: Azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # https://learn.microsoft.com/en-us/azure/developer/github/github-key-vault
+      - uses: Azure/get-keyvault-secrets@v1
+        with: 
+          keyvault: "devopsoh51264kv"
+          secrets: 'BINGS-MAP-KEY, MSSQL-SERVER-ADM-PASSWORD'
+        id: getSecrets
+
+      
 
       # Install the latest version of Terraform CLI
       - name: Setup Terraform
@@ -47,7 +63,7 @@ jobs:
       # Generates an execution plan for Terraform
       # An exit code of 2 indicates there were changes detected and will throw an error on GitHub Action. "|| exit 0" overrides it. Just continue for now, we'll check next step
       - name: Terraform Plan
-        run: terraform plan -detailed-exitcode -var="location=${{ secrets.LOCATION }}" -var="resources_prefix=${{ secrets.RESOURCES_PREFIX }}" || exit 0
+        run: terraform plan -detailed-exitcode -var="location=${{ secrets.LOCATION }}" -var="resources_prefix=${{ secrets.RESOURCES_PREFIX }}" -var="bing_maps_key=${{ steps.getSecrets.outputs.BINGS-MAP-KEY }}" -var="mssql_server_administrator_login_password=${{ steps.getSecrets.outputs.MSSQL-SERVER-ADM-PASSWORD }}" || exit 0
         id: tfplan
 
   deploy:
@@ -79,4 +95,4 @@ jobs:
 
       # Terraform Apply
       - name: Terraform Apply
-        run: terraform apply -auto-approve -var="location=${{ secrets.LOCATION }}" -var="resources_prefix=${{ secrets.RESOURCES_PREFIX }}"
+        run: terraform apply -auto-approve -var="location=${{ secrets.LOCATION }}" -var="resources_prefix=${{ secrets.RESOURCES_PREFIX }}" -var="bing_maps_key=${{ needs.preview.outputs.BINGS-MAP-KEY }}" -var="mssql_server_administrator_login_password=${{ needs.preview.outputs.MSSQL-SERVER-ADM-PASSWORD }}"

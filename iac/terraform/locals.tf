@@ -25,7 +25,7 @@ locals {
   mssql_server_administrator_login_password = var.mssql_server_administrator_login_password != null ? var.mssql_server_administrator_login_password : local._secrets.mssql_server_administrator_login_password
   mssql_firewall_rule_myip                  = data.external.my_ip.result["my_ip"]
   mssql_database_name                       = "mydrivingDB"
-  bing_maps_key                             = local._secrets.bing_maps_key
+  bing_maps_key                             = var.bing_maps_key
   app_service_plan_name                     = "${local.resources_prefix}plan"
   app_service_tripviewer_name               = "${local.resources_prefix}tripviewer"
   app_service_api-poi_name                  = "${local.resources_prefix}poi"

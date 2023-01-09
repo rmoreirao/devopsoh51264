@@ -84,21 +84,48 @@ jobs:
           max-attempts: 6
           retry-delay: 10s
           retry-all: true
+      - name: Install Apache Bench
+        working-directory: ""
+        run: sudo apt-get install  apache2-utils
+        
+      - name: Load Test 
+        working-directory: ""
+        run: | 
+          failures=$(ab -t 10 -c 10 https://${{ secrets.RESOURCES_PREFIX }}${{ env.API_NAME }}-staging.azurewebsites.net/api/version/poi | grep -Poe 'Failed requests: \K.*' | sed 's/^ *//g')
+          if [ "$failures" -gt "0" ];then
+            exit -1
+          fi
 
-  load_test_staging:
-    name: "Load Testing Staging (Blue)"
-    runs-on: ubuntu-latest
+  route_traffic_fifty_percent_validate:
+    name: "Route 50% of Production Traffic to Stating"
     needs: staging
+    runs-on: ubuntu-latest
     steps:
+    - name: Azure authentication
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS  }} 
+    
+    - name: Swap staging to production
+      run: |
+        az webapp traffic-routing set --distribution staging=50 --name ${{ env.RESOURCES_PREFIX }}${{ env.API_NAME }} --resource-group ${{ secrets.RESOURCES_PREFIX }}rg
+    
     - name: Install Apache Bench
       working-directory: ""
       run: sudo apt-get install  apache2-utils
-      
-    - name: Load Test 
+        
+    - name: Load Test 50 percent
       working-directory: ""
       run: | 
-        rps=$(ab -t 20 -c 10 https://${{ secrets.RESOURCES_PREFIX }}${{ env.API_NAME }}-staging.azurewebsites.net/api/version/poi | grep -Poe 'Requests per second: \K.*' | sed 's/^ *//g')
-        echo "Requests per second: $rps" 
+        failures=$(ab -t 10 -c 10 https://${{ secrets.RESOURCES_PREFIX }}${{ env.API_NAME }}.azurewebsites.net/api/version/poi | grep -Poe 'Failed requests: \K.*' | sed 's/^ *//g')
+        if [ "$failures" -gt "0" ];then
+          exit -1
+        fi
+
+    - name: Rollback Production
+      if: failure()
+      run: |
+        az webapp traffic-routing clear --name ${{ env.RESOURCES_PREFIX }}${{ env.API_NAME }} --resource-group ${{ secrets.RESOURCES_PREFIX }}rg
 
   production:
     name: "Production (Red)"
@@ -115,6 +142,10 @@ jobs:
         uses: Azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Clear routing
+        run: |
+          az webapp traffic-routing clear --name ${{ env.RESOURCES_PREFIX }}${{ env.API_NAME }} --resource-group ${{ secrets.RESOURCES_PREFIX }}rg
 
       # Set new Docker image in WebApp
       # - name: Azure WebApp
@@ -137,3 +168,11 @@ jobs:
           max-attempts: 6
           retry-delay: 10s
           retry-all: true
+
+      - name: "If Failure Rollback Production"
+        if: failure()
+        uses: Azure/cli@v1
+        id: deploy-to-webapp
+        with:
+          inlineScript: az webapp deployment slot swap  -g ${{ secrets.RESOURCES_PREFIX }}rg -n ${{ env.RESOURCES_PREFIX }}${{ env.API_NAME }} --slot staging --target-slot production
+        

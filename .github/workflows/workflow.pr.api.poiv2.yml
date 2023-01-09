@@ -27,7 +27,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      # Gitleaks is really not working!!
+      # Gitleaks is really not working!! 
       # - name: "Check for secrets with Gitleaks"
       #   id: gitleaks
       #   uses: DariuszPorowski/github-action-gitleaks@v2
@@ -67,6 +67,21 @@ jobs:
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Add Code Coverage Tools
+        working-directory: apis/poi/tests/UnitTests
+        run: dotnet add package coverlet.msbuild
+
+      - name: .NET Test
+        run: dotnet test --no-restore --verbosity normal apis/poi/tests/UnitTests  /p:CollectCoverage=true /p:CoverletOutput=lcov/ /p:CoverletOutputFormat=lcov
+
+      - name: Coveralls
+        uses: coverallsapp/github-action@master
+        with:
+          github-token: ${{ secrets.GH_TOKEN }}
+          path-to-lcov: apis/poi/tests/UnitTests/lcov/coverage.info
+          base-path: apis/poi
+          flag-name: Unit
 
       - name: "Restore dependencies"
         run: dotnet restore

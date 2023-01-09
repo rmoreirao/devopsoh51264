@@ -106,8 +106,9 @@ jobs:
         creds: ${{ secrets.AZURE_CREDENTIALS  }} 
     
     - name: Swap staging to production
-      run: |
-        az webapp traffic-routing set --distribution staging=50 --name ${{ env.RESOURCES_PREFIX }}${{ env.API_NAME }} --resource-group ${{ secrets.RESOURCES_PREFIX }}rg
+      uses: Azure/cli@v1
+      with:
+        inlineScript: az webapp traffic-routing set --distribution staging=50 --name ${{ env.RESOURCES_PREFIX }}${{ env.API_NAME }} --resource-group ${{ secrets.RESOURCES_PREFIX }}rg
     
     - name: Install Apache Bench
       working-directory: ""
@@ -123,8 +124,9 @@ jobs:
 
     - name: Rollback Production
       if: failure()
-      run: |
-        az webapp traffic-routing clear --name ${{ env.RESOURCES_PREFIX }}${{ env.API_NAME }} --resource-group ${{ secrets.RESOURCES_PREFIX }}rg
+      uses: Azure/cli@v1
+      with:
+        inlineScript: az webapp traffic-routing clear --name ${{ env.RESOURCES_PREFIX }}${{ env.API_NAME }} --resource-group ${{ secrets.RESOURCES_PREFIX }}rg
 
   production:
     name: "Production (Red)"
@@ -143,8 +145,9 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Clear routing
-        run: |
-          az webapp traffic-routing clear --name ${{ env.RESOURCES_PREFIX }}${{ env.API_NAME }} --resource-group ${{ secrets.RESOURCES_PREFIX }}rg
+        uses: Azure/cli@v1
+        with:
+          inlineScript: az webapp traffic-routing clear --name ${{ env.RESOURCES_PREFIX }}${{ env.API_NAME }} --resource-group ${{ secrets.RESOURCES_PREFIX }}rg
 
       # Set new Docker image in WebApp
       # - name: Azure WebApp

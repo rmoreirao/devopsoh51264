@@ -72,6 +72,12 @@ jobs:
         working-directory: apis/poi/tests/UnitTests
         run: dotnet add package coverlet.msbuild
 
+      - name: "Restore dependencies"
+        run: dotnet restore
+
+      - name: "Build the App"
+        run: dotnet build --no-restore
+
       - name: .NET Test
         run: dotnet test --no-restore --verbosity normal tests/UnitTests  /p:CollectCoverage=true /p:CoverletOutput=lcov/ /p:CoverletOutputFormat=lcov
 
@@ -81,12 +87,6 @@ jobs:
           github-token: ${{ secrets.GH_TOKEN }}
           path-to-lcov: tests/UnitTests/lcov/coverage.info
           flag-name: Unit
-
-      - name: "Restore dependencies"
-        run: dotnet restore
-
-      - name: "Build the App"
-        run: dotnet build --no-restore
 
       - name: "Run Unit Tests"
         id: unittest
